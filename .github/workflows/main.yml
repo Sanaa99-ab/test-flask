@@ -1,0 +1,36 @@
+name: Deploy to IBM Cloud Code Engine
+
+on:
+  push:
+    branches:
+      - main  # Set this to the branch you want to deploy from
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Log in to IBM Cloud
+      uses: IBM-Cloud/github-actions/login@v1
+      with:
+        ibmcloud_api_key: ${{ secrets.IBMCLOUD_API_KEY }}
+
+    - name: Build the Docker image
+      run: |
+        docker build -t us.icr.io/${{ secrets.ICR_NAMESPACE }}/my_flask_app:${{ github.sha }} .
+
+    - name: Push Docker image to IBM Cloud Container Registry
+      run: |
+        ibmcloud cr login
+        docker push us.icr.io/${{ secrets.ICR_NAMESPACE }}/my_flask_app:${{ github.sha }}
+
+    - name: Deploy to IBM Cloud Code Engine
+      run: |
+        ibmcloud ce application update --name my-flask-app --image us.icr.io/${{ secrets.ICR_NAMESPACE }}/my_flask_app:${{ github.sha }}
+
+    - name: Get application details
+      run: |
+        ibmcloud ce application get --name my-flask-app
